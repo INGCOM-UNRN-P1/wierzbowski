@@ -50,6 +50,8 @@ def lint_makefile(makefile_path: Path) -> List[MakefileIssue]:
 
         # Verificar si una receta usa espacios en lugar de un Tab inicial
         if line.startswith("    ") and not line.startswith("\t") and not stripped.startswith("#"):
+            if idx > 1 and lines[idx - 2].rstrip().endswith("\\"):
+                continue
             issues.append(MakefileIssue(
                 code="MKF001",
                 severity="ERROR",
