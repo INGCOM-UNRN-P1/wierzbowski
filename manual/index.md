@@ -340,3 +340,12 @@ Podés encadenar `wierzbowski` con otras herramientas del ecosistema en una úni
 wierzbowski audit include/ src/ && wierzbowski check-makefile Makefile
 ````
 
+---
+
+(manual-wierzbowski-seccion-plugins)=
+## 9. Extensión, Desarrollo de Plugins y API Python
+
+Para crear tus propias reglas, conectores de evaluación o integrar `wierzbowski` programáticamente en pipelines de CI/CD:
+
+- 👉 **Consultá la guía completa:** [Guía de Extensión y Creación de Plugins](plugins.md)
+
