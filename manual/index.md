@@ -169,3 +169,53 @@ check-wierzbowski:
 ````
 
 Ejecutá `make check-wierzbowski` antes de cada commit para asegurar que tu código conserve el estado de aprobación.
+
+---
+
+(manual-wierzbowski-arquitectura)=
+## 7. Arquitectura Interna y Mecanismo Técnico
+
+La herramienta **`wierzbowski`** implementa un motor de alta precisión basado en:
+
+- **Tecnología Núcleo:** `C Preprocessor Inclusions Graph Builder + NetworkX Cycle Detector + Makefile Dependency Parser`.
+- **Aislamiento y Determinismo:** Diseñada para operar sin efectos colaterales en entornos de integración continua (CI), terminales de estudiantes y servidores docentes headless.
+- **Manejo de Errores Pedagógico:** Todo fallo de sintaxis, memoria o lógica se traduce en una acción prescriptiva concreta con su respectiva justificación técnica.
+
+---
+
+(manual-wierzbowski-ecosistema)=
+## 8. Integración y Conexión con el Ecosistema
+
+````{note}
+Ninguna herramienta opera de forma aislada. **`wierzbowski`** forma parte del pipeline integral de evaluación, verificación y enseñanza de la cátedra.
+````
+
+### Diagrama de Flujo e Interoperabilidad
+
+````{mermaid}
+graph TD
+    HDR[Archivos include/*.h y src/*.c] --> WRZ[Wierzbowski: Grafo de Includes]
+    MKF[Makefile del Proyecto] --> WRZ
+    WRZ -->|Detección de Ciclos de Inclusión| NETX[NetworkX Cycle Detector]
+    WRZ -->|Consistencia de Reglas| DAE[Daedalus: Compilador Defensivo]
+    WRZ -->|Limpieza de Includes| RIP[Ripley: Linter de Cátedra]
+````
+
+### Matriz de Intercambio de Datos
+
+| Canal | Herramientas Conectadas | Tipo de Datos Transferidos |
+| :--- | :--- | :--- |
+| **Entradas (Inputs)** | - `Código fuente C (.c/.h) y archivos Makefile` | Código fuente, AST, binarios, testcases, contratos |
+| **Salidas (Outputs)** | - `daedalus (orden de compilación)`
+- `ripley (reglas de headers)` | Informes Markdown, diagnósticos Rich, JSON, actas |
+| **Sincronización** | `daedalus`, `corbel`, `ripley` | Validación cruzada, flags compartidos y autofix |
+
+### Pipeline de Integración Recomendado
+
+Podés encadenar `wierzbowski` con otras herramientas del ecosistema en una única línea de comando:
+
+````{code-block} bash
+# Pipeline de integración típico
+wierzbowski audit include/ src/ && wierzbowski check-makefile Makefile
+````
+
