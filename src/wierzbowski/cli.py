@@ -22,7 +22,10 @@ console = Console()
 
 def generar_seccion_markdown(report: DependencyAuditReport) -> str:
     """Genera sección de auditoría de inclusión de cabeceras y Makefile para Dredd."""
-    lines = ["## Dependencias de Cabeceras y Makefile (Wierzbowski)\n"]
+    lines = [
+        "<!-- dredd-section: wierzbowski v1.0.0 -->\n",
+        "## Dependencias de Cabeceras y Makefile (Wierzbowski)\n",
+    ]
     lines.append(f"- **Cabeceras escaneadas:** {report.total_headers_scanned}")
     lines.append(f"- **Archivos C escaneados:** {report.total_c_files_scanned}")
     lines.append(f"- **Ciclos de inclusión detectados:** {len(report.cycles)}")
@@ -47,7 +50,9 @@ def generar_seccion_markdown(report: DependencyAuditReport) -> str:
             lines.append("| Código | Severidad | Línea | Diagnóstico | Sugerencia |")
             lines.append("| :---: | :---: | :---: | :--- | :--- |")
             for m in report.makefile_issues:
-                lines.append(f"| `{m.code}` | **{m.severity}** | {m.line_number} | {m.message} | {m.suggestion} |")
+                msg_limpio = m.message.replace("|", "&#124;")
+                sug_limpio = m.suggestion.replace("|", "&#124;")
+                lines.append(f"| `{m.code}` | **{m.severity}** | {m.line_number} | {msg_limpio} | {sug_limpio} |")
             lines.append("")
     return "\n".join(lines)
 

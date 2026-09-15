@@ -26,6 +26,7 @@ class MakefileIssue(BaseModel):
 
 
 class DependencyAuditReport(BaseModel):
+    schema_version: str = "1.0.0"
     total_headers_scanned: int = 0
     total_c_files_scanned: int = 0
     nodes: Dict[str, HeaderNode] = Field(default_factory=dict)
