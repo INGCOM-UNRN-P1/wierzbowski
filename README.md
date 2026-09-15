@@ -9,8 +9,7 @@
 ### Qué cubre
 - Auditoría estática de grafos de inclusión de archivos de cabecera (`#include`) y Makefiles en C.
 - Detección de dependencias circulares y ciclos de inclusión entre archivos `.h` y `.c`.
-- Verificación de presencia de cabeceras estándar requeridas por funciones de biblioteca (ej. `<stdio.h>`, `<stdlib.h>`).
-- Identificación de inclusiones huérfanas, innecesarias o redundantes.
+- Verificación de presencia de guardas de inclusión defensivas (`#ifndef / #define` o `#pragma once`) en cabeceras `.h`.
 - Auditoría de sintaxis y coherencia de reglas en Makefiles de proyectos estudiantiles.
 
 ### Qué no cubre (Límites y Delegación)
@@ -26,7 +25,7 @@
 - Multiplataforma. Python >= 3.10.
 
 ### Dependencias Externas y Binarios
-- Ninguno obligatorio (análisis estático con Tree-Sitter AST).
+- Ninguno obligatorio (análisis estático de código fuente y Makefiles).
 
 ### Integración en el Ecosistema
 - CLI `wierzbowski`. Plugin registrado en `ripley.plugins` (`headers_audit`).
@@ -38,9 +37,13 @@
 ```bash
 # Auditar dependencias en el directorio actual
 wierzbowski audit .
+wierzbowski check .
 
 # Auditar proyecto específico
 wierzbowski audit ./tp_modular/
+
+# Generar informe en formato Markdown
+wierzbowski report .
 
 # Salida estructurada JSON
 wierzbowski audit . --json
