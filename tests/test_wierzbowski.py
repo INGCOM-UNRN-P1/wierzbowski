@@ -1,5 +1,6 @@
 """Tests unitarios y de integración para WIERZBOWSKI."""
 
+import json
 from pathlib import Path
 from typer.testing import CliRunner
 from wierzbowski.cli import app
@@ -8,6 +9,18 @@ from wierzbowski.core.guard_checker import check_header_guard, lint_makefile
 from wierzbowski.plugins.ripley_plugin import WierzbowskiPlugin
 
 runner = CliRunner()
+
+
+def test_cli_doctor():
+    res = runner.invoke(app, ["doctor"])
+    assert res.exit_code == 0
+    assert "doctor" in res.output.lower()
+
+    res_json = runner.invoke(app, ["doctor", "--json"])
+    assert res_json.exit_code == 0
+    data = json.loads(res_json.output)
+    assert data["herramienta"] == "wierzbowski"
+    assert data["ok"] is True
 
 
 def test_detect_circular_dependency(tmp_path):

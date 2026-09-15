@@ -177,6 +177,66 @@ def report_cmd(
         print(md_content)
 
 
+@app.command("doctor")
+def doctor_cmd(
+    json_output: bool = typer.Option(False, "--json", help="Emitir diagnóstico en formato JSON estructurado."),
+) -> None:
+    """Verifica el estado del entorno de auditoría de dependencias WIERZBOWSKI (Python, Make, GCC)."""
+    import shutil
+    import sys
+    diagnostico = []
+
+    py_ok = sys.version_info >= (3, 10)
+    diagnostico.append({
+        "componente": "Python Runtime",
+        "estado": "OK" if py_ok else "ERROR",
+        "requerido": True,
+        "detalle": f"Python {sys.version.split()[0]}",
+    })
+
+    make_path = shutil.which("make")
+    diagnostico.append({
+        "componente": "GNU Make",
+        "estado": "OK" if make_path else "ADVERTENCIA",
+        "requerido": False,
+        "detalle": make_path or "No encontrado (opcional para validación de Makefiles)",
+    })
+
+    gcc_path = shutil.which("gcc")
+    diagnostico.append({
+        "componente": "Compilador GCC",
+        "estado": "OK" if gcc_path else "ADVERTENCIA",
+        "requerido": False,
+        "detalle": gcc_path or "No encontrado (opcional para preprocesamiento de inclusión)",
+    })
+
+    todo_ok = py_ok
+
+    if json_output:
+        payload = {
+            "schema_version": "1.0.0",
+            "herramienta": "wierzbowski",
+            "ok": todo_ok,
+            "componentes": diagnostico,
+        }
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        raise typer.Exit(code=0 if todo_ok else 1)
+
+    tabla = Table(title="🏥 Diagnóstico del Entorno WIERZBOWSKI (doctor)", border_style="cyan")
+    tabla.add_column("Componente", style="bold white")
+    tabla.add_column("Estado", justify="center")
+    tabla.add_column("Detalle")
+
+    for c in diagnostico:
+        color = "bold green" if c["estado"] == "OK" else ("bold yellow" if c["estado"] == "ADVERTENCIA" else "bold red")
+        simbolo = "✓" if c["estado"] == "OK" else ("⚠️" if c["estado"] == "ADVERTENCIA" else "✗")
+        tabla.add_row(c["componente"], f"[{color}]{simbolo} {c['estado']}[/{color}]", c["detalle"])
+
+    console.print(tabla)
+    if not todo_ok:
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def version():
     """Muestra la versión de WIERZBOWSKI."""
