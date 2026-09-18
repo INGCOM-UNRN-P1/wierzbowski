@@ -3,14 +3,20 @@
 import re
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
+from wierzbowski.core.masking import enmascarar_para_includes
 from wierzbowski.core.models import HeaderNode, CircularDependency
 
 INCLUDE_PATTERN = re.compile(r'^\s*#\s*include\s+["<]([^">]+)[">]', re.MULTILINE)
 
 
 def extract_includes(file_content: str) -> List[str]:
-    """Extrae todos los archivos incluidos en un fuente C o H."""
-    return INCLUDE_PATTERN.findall(file_content)
+    """Extrae los archivos incluidos en un fuente C o H que realmente cuentan.
+
+    Se ignoran los `#include` que están dentro de comentarios o de un bloque
+    `#if 0`: el compilador no los ve, y contarlos inventaba dependencias y
+    ciclos inexistentes.
+    """
+    return INCLUDE_PATTERN.findall(enmascarar_para_includes(file_content))
 
 
 def build_dependency_graph(directory: Path) -> Dict[str, HeaderNode]:
