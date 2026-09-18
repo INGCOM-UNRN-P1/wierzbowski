@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rich.tree import Tree
 from wierzbowski.core.models import DependencyAuditReport
 from wierzbowski.core.header_graph import build_dependency_graph, detect_cycles
-from wierzbowski.core.guard_checker import check_header_guard, lint_makefile
+from wierzbowski.core.guard_checker import auditar_guardas, lint_makefile
 
 app = typer.Typer(
     name="wierzbowski",
@@ -30,7 +30,13 @@ def generar_seccion_markdown(report: DependencyAuditReport) -> str:
     lines.append(f"- **Archivos C escaneados:** {report.total_c_files_scanned}")
     lines.append(f"- **Ciclos de inclusión detectados:** {len(report.cycles)}")
     lines.append(f"- **Problemas en guardas de inclusión:** {len(report.guard_issues)}")
+    lines.append(f"- **Avisos en guardas de inclusión:** {len(report.guard_notes)}")
     lines.append(f"- **Observaciones de Makefile:** {len(report.makefile_issues)}\n")
+    if report.guard_notes:
+        lines.append("> [!NOTE]\n> **Guardas que no corresponden al archivo:**")
+        for n in report.guard_notes:
+            lines.append(f"> - {n}")
+        lines.append("")
     if report.passed:
         lines.append("> [!TIP]\n> **Grafo Modular Limpio:** No se detectaron ciclos de inclusión circular, las guardas son canónicas y el Makefile respeta los estándares.\n")
     else:
@@ -68,12 +74,8 @@ def audit(
     nodes = build_dependency_graph(directory)
     cycles = detect_cycles(nodes)
 
-    guard_issues = []
-    headers = list(directory.glob("**/*.h"))
-    for h in headers:
-        ok, msg = check_header_guard(h)
-        if not ok:
-            guard_issues.append(f"{h.name}: {msg}")
+    headers = sorted(directory.glob("**/*.h"))
+    guard_issues, guard_notes = auditar_guardas(headers)
 
     makefile_path = directory / "Makefile"
     mk_issues = lint_makefile(makefile_path) if makefile_path.exists() else []
@@ -85,6 +87,7 @@ def audit(
         nodes=nodes,
         cycles=cycles,
         guard_issues=guard_issues,
+        guard_notes=guard_notes,
         makefile_issues=mk_issues,
         passed=passed
     )
@@ -120,6 +123,11 @@ def audit(
         for g in guard_issues:
             console.print(f"  [yellow]• {g}[/yellow]")
 
+    if guard_notes:
+        console.print("\n[bold cyan]ℹ Avisos en Guardas de Inclusión:[/bold cyan]")
+        for n in guard_notes:
+            console.print(f"  [cyan]• {n}[/cyan]")
+
     if mk_issues:
         table = Table(title="Auditoría de Makefile", show_header=True, header_style="bold blue")
         table.add_column("Código", style="cyan")
@@ -150,12 +158,8 @@ def report_cmd(
     """Genera directamente la sección de reporte Markdown de WIERZBOWSKI para Dredd."""
     nodes = build_dependency_graph(directory)
     cycles = detect_cycles(nodes)
-    guard_issues = []
-    headers = list(directory.glob("**/*.h"))
-    for h in headers:
-        ok, msg = check_header_guard(h)
-        if not ok:
-            guard_issues.append(f"{h.name}: {msg}")
+    headers = sorted(directory.glob("**/*.h"))
+    guard_issues, guard_notes = auditar_guardas(headers)
     makefile_path = directory / "Makefile"
     mk_issues = lint_makefile(makefile_path) if makefile_path.exists() else []
     passed = (len(cycles) == 0) and (len(guard_issues) == 0) and not any(i.severity == "ERROR" for i in mk_issues)
@@ -165,6 +169,7 @@ def report_cmd(
         nodes=nodes,
         cycles=cycles,
         guard_issues=guard_issues,
+        guard_notes=guard_notes,
         makefile_issues=mk_issues,
         passed=passed
     )

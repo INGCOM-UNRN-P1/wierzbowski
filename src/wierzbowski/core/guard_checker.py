@@ -2,28 +2,81 @@
 
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 from wierzbowski.core.models import MakefileIssue
 
 GUARD_PATTERN = re.compile(r'^\s*#\s*ifndef\s+([a-zA-Z0-9_]+)\s*\n\s*#\s*define\s+\1', re.MULTILINE)
 PRAGMA_ONCE_PATTERN = re.compile(r'^\s*#\s*pragma\s+once', re.MULTILINE)
 
 
-def check_header_guard(header_path: Path) -> Tuple[bool, str]:
-    """Verifica si un archivo .h posee guardas estándar o #pragma once."""
+def _macro_esperada(header_path: Path) -> str:
+    return re.sub(r"[^A-Za-z0-9]", "_", header_path.name).upper()
+
+
+def inspeccionar_guarda(header_path: Path) -> Tuple[bool, Optional[str], Optional[str]]:
+    """Devuelve (tiene_guarda, macro, aviso).
+
+    `aviso` señala una guarda que no corresponde al nombre del archivo. Se
+    aceptan los prefijos/sufijos habituales (`PROYECTO_LISTA_H`, `LISTA_H_`,
+    `__LISTA_H__`): lo que no puede pasar es que el nombre de la guarda sea el de
+    OTRO archivo (`VECTOR_H` en `lista.h`), típico de un encabezado copiado.
+    """
     content = header_path.read_text(encoding="utf-8", errors="replace")
     if PRAGMA_ONCE_PATTERN.search(content):
-        return True, "#pragma once"
+        return True, None, None
 
     match = GUARD_PATTERN.search(content)
     if match:
         macro_name = match.group(1)
-        expected_macro = header_path.name.upper().replace(".", "_").replace("-", "_")
-        if macro_name != expected_macro and not macro_name.endswith("_H"):
-            return True, f"Guard no estándar: {macro_name}"
-        return True, macro_name
+        esperada = _macro_esperada(header_path)
+        if not macro_name.strip("_").endswith(esperada.strip("_")):
+            return True, macro_name, (
+                f"la guarda '{macro_name}' no corresponde al archivo (se esperaría '{esperada}'): "
+                "¿se copió de otro encabezado?"
+            )
+        return True, macro_name, None
 
-    return False, "Falta guarda de inclusión"
+    return False, None, None
+
+
+def check_header_guard(header_path: Path) -> Tuple[bool, str]:
+    """Verifica si un archivo .h posee guardas estándar o #pragma once."""
+    tiene, macro, aviso = inspeccionar_guarda(header_path)
+    if not tiene:
+        return False, "Falta guarda de inclusión"
+    if aviso:
+        return True, f"Guard no estándar: {macro}"
+    return True, macro or "#pragma once"
+
+
+def auditar_guardas(headers: Iterable[Path]) -> Tuple[List[str], List[str]]:
+    """Devuelve (problemas, avisos) de las guardas de un conjunto de cabeceras.
+
+    Son problemas la guarda ausente y la que comparten dos cabeceras: al incluir
+    ambas, el preprocesador descarta la segunda sin ningún mensaje. Es un aviso
+    la que no corresponde al nombre del archivo, que antes se descartaba.
+    """
+    problemas: List[str] = []
+    avisos: List[str] = []
+    por_macro: Dict[str, List[Path]] = {}
+    for header in headers:
+        tiene, macro, aviso = inspeccionar_guarda(header)
+        if not tiene:
+            problemas.append(f"{header.name}: Falta guarda de inclusión")
+            continue
+        if macro:
+            por_macro.setdefault(macro, []).append(header)
+        if aviso:
+            avisos.append(f"{header.name}: {aviso}")
+    for macro, usadas_por in por_macro.items():
+        if len(usadas_por) > 1:
+            for header in usadas_por:
+                otras = ", ".join(o.name for o in usadas_por if o is not header)
+                problemas.append(
+                    f"{header.name}: la guarda '{macro}' también la usa {otras}; "
+                    "si se incluyen juntos, el segundo queda vacío sin aviso."
+                )
+    return problemas, avisos
 
 
 def lint_makefile(makefile_path: Path) -> List[MakefileIssue]:

@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Dict, Any
 from wierzbowski.core.header_graph import build_dependency_graph, detect_cycles
-from wierzbowski.core.guard_checker import check_header_guard, lint_makefile
+from wierzbowski.core.guard_checker import auditar_guardas, lint_makefile
 
 
 class WierzbowskiPlugin:
@@ -17,11 +17,7 @@ class WierzbowskiPlugin:
         nodes = build_dependency_graph(source_dir)
         cycles = detect_cycles(nodes)
 
-        guard_errors = []
-        for h in source_dir.glob("**/*.h"):
-            ok, msg = check_header_guard(h)
-            if not ok:
-                guard_errors.append(f"{h.name}: {msg}")
+        guard_errors, guard_notes = auditar_guardas(sorted(source_dir.glob("**/*.h")))
 
         makefile = source_dir / "Makefile"
         mk_issues = lint_makefile(makefile) if makefile.exists() else []
@@ -33,5 +29,6 @@ class WierzbowskiPlugin:
             "circular_dependencies_count": len(cycles),
             "cycles": [c.description for c in cycles],
             "guard_errors": guard_errors,
+            "guard_notes": guard_notes,
             "makefile_issues_count": len(mk_issues)
         }

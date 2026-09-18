@@ -32,5 +32,6 @@ class DependencyAuditReport(BaseModel):
     nodes: Dict[str, HeaderNode] = Field(default_factory=dict)
     cycles: List[CircularDependency] = Field(default_factory=list)
     guard_issues: List[str] = Field(default_factory=list)
+    guard_notes: List[str] = Field(default_factory=list)
     makefile_issues: List[MakefileIssue] = Field(default_factory=list)
     passed: bool = True
