@@ -20,6 +20,44 @@ app = typer.Typer(
 console = Console()
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        from wierzbowski import __version__
+        typer.echo(f"wierzbowski {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main_callback(
+    version: Optional[bool] = typer.Option(
+        None, "--version", "-v", callback=_version_callback, is_eager=True,
+        help="Muestra la versión de wierzbowski y sale.",
+    ),
+) -> None:
+    """Auditor de grafos de inclusión de headers, dependencias circulares y Makefiles."""
+
+
+def _auditar_directorio(directory: Path) -> DependencyAuditReport:
+    """Recolecta grafo, ciclos, guardas y Makefile; lo comparten `audit` y `report`."""
+    nodes = build_dependency_graph(directory)
+    cycles = detect_cycles(nodes)
+    headers = sorted(directory.glob("**/*.h"))
+    guard_issues, guard_notes = auditar_guardas(headers)
+    makefile_path = directory / "Makefile"
+    mk_issues = lint_makefile(makefile_path) if makefile_path.exists() else []
+    passed = (len(cycles) == 0) and (len(guard_issues) == 0) and not any(i.severity == "ERROR" for i in mk_issues)
+    return DependencyAuditReport(
+        total_headers_scanned=len(headers),
+        total_c_files_scanned=len(list(directory.glob("**/*.c"))),
+        nodes=nodes,
+        cycles=cycles,
+        guard_issues=guard_issues,
+        guard_notes=guard_notes,
+        makefile_issues=mk_issues,
+        passed=passed,
+    )
+
+
 def generar_seccion_markdown(report: DependencyAuditReport) -> str:
     """Genera sección de auditoría de inclusión de cabeceras y Makefile para Dredd."""
     lines = [
@@ -71,26 +109,10 @@ def audit(
     output_md: Optional[Path] = typer.Option(None, "--md", "--output-md", help="Generar sección de reporte en formato Markdown para fusión en Dredd."),
 ):
     """Audita dependencias entre cabeceras, ciclos de inclusión y Makefiles."""
-    nodes = build_dependency_graph(directory)
-    cycles = detect_cycles(nodes)
-
-    headers = sorted(directory.glob("**/*.h"))
-    guard_issues, guard_notes = auditar_guardas(headers)
-
-    makefile_path = directory / "Makefile"
-    mk_issues = lint_makefile(makefile_path) if makefile_path.exists() else []
-
-    passed = (len(cycles) == 0) and (len(guard_issues) == 0) and not any(i.severity == "ERROR" for i in mk_issues)
-    report = DependencyAuditReport(
-        total_headers_scanned=len(headers),
-        total_c_files_scanned=len(list(directory.glob("**/*.c"))),
-        nodes=nodes,
-        cycles=cycles,
-        guard_issues=guard_issues,
-        guard_notes=guard_notes,
-        makefile_issues=mk_issues,
-        passed=passed
-    )
+    report = _auditar_directorio(directory)
+    nodes, cycles = report.nodes, report.cycles
+    guard_issues, guard_notes = report.guard_issues, report.guard_notes
+    mk_issues = report.makefile_issues
 
     if output_md:
         md_text = generar_seccion_markdown(report)
@@ -156,23 +178,7 @@ def report_cmd(
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Ruta de destino del archivo Markdown."),
 ):
     """Genera directamente la sección de reporte Markdown de WIERZBOWSKI para Dredd."""
-    nodes = build_dependency_graph(directory)
-    cycles = detect_cycles(nodes)
-    headers = sorted(directory.glob("**/*.h"))
-    guard_issues, guard_notes = auditar_guardas(headers)
-    makefile_path = directory / "Makefile"
-    mk_issues = lint_makefile(makefile_path) if makefile_path.exists() else []
-    passed = (len(cycles) == 0) and (len(guard_issues) == 0) and not any(i.severity == "ERROR" for i in mk_issues)
-    report = DependencyAuditReport(
-        total_headers_scanned=len(headers),
-        total_c_files_scanned=len(list(directory.glob("**/*.c"))),
-        nodes=nodes,
-        cycles=cycles,
-        guard_issues=guard_issues,
-        guard_notes=guard_notes,
-        makefile_issues=mk_issues,
-        passed=passed
-    )
+    report = _auditar_directorio(directory)
     md_content = generar_seccion_markdown(report)
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -242,7 +248,7 @@ def doctor_cmd(
         raise typer.Exit(code=1)
 
 
-@app.command()
+@app.command(hidden=True)
 def version():
     """Muestra la versión de WIERZBOWSKI."""
     from wierzbowski import __version__
