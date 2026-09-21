@@ -6,17 +6,19 @@ from typing import Dict, List, Set, Tuple
 from wierzbowski.core.masking import enmascarar_para_includes
 from wierzbowski.core.models import HeaderNode, CircularDependency
 
-INCLUDE_PATTERN = re.compile(r'^\s*#\s*include\s+["<]([^">]+)[">]', re.MULTILINE)
+INCLUDE_PATTERN = re.compile(r'^\s*#\s*include\s+(["<])([^">]+)[">]', re.MULTILINE)
 
 
-def extract_includes(file_content: str) -> List[str]:
+def extract_includes(file_content: str, incluir_sistema: bool = True) -> List[str]:
     """Extrae los archivos incluidos en un fuente C o H que realmente cuentan.
 
     Se ignoran los `#include` que están dentro de comentarios o de un bloque
     `#if 0`: el compilador no los ve, y contarlos inventaba dependencias y
-    ciclos inexistentes.
+    ciclos inexistentes. Con `incluir_sistema=False` se omiten también los
+    `#include <...>` (cabeceras del sistema, que no son parte del proyecto).
     """
-    return INCLUDE_PATTERN.findall(enmascarar_para_includes(file_content))
+    encontrados = INCLUDE_PATTERN.findall(enmascarar_para_includes(file_content))
+    return [nombre for delim, nombre in encontrados if incluir_sistema or delim == '"']
 
 
 def build_dependency_graph(directory: Path) -> Dict[str, HeaderNode]:
@@ -26,10 +28,7 @@ def build_dependency_graph(directory: Path) -> Dict[str, HeaderNode]:
 
     for f in files:
         content = f.read_text(encoding="utf-8", errors="replace")
-        includes = extract_includes(content)
-        # Solo incluir cabeceras locales / del proyecto
-        local_includes = [inc for inc in includes if not inc.endswith((".h", ".hpp")) or not inc.startswith("<")]
-        # O si termina en .h y no es estándar de libc
+        includes = extract_includes(content, incluir_sistema=False)
         normalized_includes = []
         for inc in includes:
             if "/" not in inc and not inc.endswith((".h", ".hpp")):
