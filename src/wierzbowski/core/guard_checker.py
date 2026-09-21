@@ -79,6 +79,9 @@ def auditar_guardas(headers: Iterable[Path]) -> Tuple[List[str], List[str]]:
     return problemas, avisos
 
 
+_REGLA = re.compile(r"^[^\s#=:][^=:]*:(?!=)")
+
+
 def lint_makefile(makefile_path: Path) -> List[MakefileIssue]:
     """Analiza un Makefile en busca de errores clásicos y buenas prácticas."""
     issues = []
@@ -92,8 +95,11 @@ def lint_makefile(makefile_path: Path) -> List[MakefileIssue]:
     has_clean = False
     has_all = False
 
+    en_regla = False
     for idx, line in enumerate(lines, 1):
         stripped = line.strip()
+        if line[:1] not in (" ", "\t", "\n", "\r", "#", ""):
+            en_regla = bool(_REGLA.match(line))
         if stripped.startswith(".PHONY:"):
             has_phony = True
         if stripped.startswith("clean:"):
@@ -102,14 +108,14 @@ def lint_makefile(makefile_path: Path) -> List[MakefileIssue]:
             has_all = True
 
         # Verificar si una receta usa espacios en lugar de un Tab inicial
-        if line.startswith("    ") and not line.startswith("\t") and not stripped.startswith("#"):
+        if en_regla and line.startswith(" ") and stripped and not stripped.startswith("#"):
             if idx > 1 and lines[idx - 2].rstrip().endswith("\\"):
                 continue
             issues.append(MakefileIssue(
                 code="MKF001",
                 severity="ERROR",
                 line_number=idx,
-                message="Receta de regla indentada con 4 espacios en lugar de un caracter TAB.",
+                message="Receta de regla indentada con espacios en lugar de un caracter TAB.",
                 suggestion="Make requiere obligatoriamente caracteres TAB (ASCII 0x09) para las líneas de comandos."
             ))
 
