@@ -60,8 +60,9 @@ def _auditar_directorio(directory: Path) -> DependencyAuditReport:
 
 def generar_seccion_markdown(report: DependencyAuditReport) -> str:
     """Genera sección de auditoría de inclusión de cabeceras y Makefile para Dredd."""
+    status = "ok" if report.passed else "fail"
     lines = [
-        "<!-- dredd-section: wierzbowski v1.0.0 -->\n",
+        f"<!-- dredd-section: wierzbowski, tool=wierzbowski, version=1.0.0, status={status} -->\n",
         "## Dependencias de Cabeceras y Makefile (Wierzbowski)\n",
     ]
     lines.append(f"- **Cabeceras escaneadas:** {report.total_headers_scanned}")
