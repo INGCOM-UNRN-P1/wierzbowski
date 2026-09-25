@@ -13,6 +13,7 @@ from wierzbowski.core.header_graph import build_dependency_graph, detect_cycles
 from wierzbowski.core.guard_checker import auditar_guardas, lint_makefile
 
 app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
     name="wierzbowski",
     help="Auditor de grafos de inclusión de headers, dependencias circulares y Makefiles",
     add_completion=True
