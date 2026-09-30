@@ -106,7 +106,7 @@ def generar_seccion_markdown(report: DependencyAuditReport) -> str:
 @app.command("audit")
 @app.command("check")
 def audit(
-    directory: Path = typer.Argument(Path("."), help="Directorio raíz del proyecto C a analizar"),
+    directory: Path = typer.Argument(Path("."), exists=True, help="Directorio raíz del proyecto C a analizar"),
     json_output: bool = typer.Option(False, "--json", help="Emitir salida en formato JSON estructurado"),
     output_md: Optional[Path] = typer.Option(None, "--md", "--output-md", help="Generar sección de reporte en formato Markdown para fusión en Dredd."),
 ):
@@ -176,7 +176,7 @@ def audit(
 
 @app.command("report")
 def report_cmd(
-    directory: Path = typer.Argument(Path("."), help="Directorio raíz del proyecto C a analizar"),
+    directory: Path = typer.Argument(Path("."), exists=True, help="Directorio raíz del proyecto C a analizar"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Ruta de destino del archivo Markdown."),
 ):
     """Genera directamente la sección de reporte Markdown de WIERZBOWSKI para Dredd."""
