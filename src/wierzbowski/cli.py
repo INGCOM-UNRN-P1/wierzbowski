@@ -4,38 +4,26 @@ import json
 from pathlib import Path
 from typing import Optional
 import typer
+from yutani.cli import crear_app
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.tree import Tree
+from wierzbowski import __version__
 from wierzbowski.core.models import DependencyAuditReport
 from wierzbowski.core.header_graph import build_dependency_graph, detect_cycles
 from wierzbowski.core.guard_checker import auditar_guardas, lint_makefile
 
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    name="wierzbowski",
-    help="Auditor de grafos de inclusión de headers, dependencias circulares y Makefiles",
-    add_completion=True
+# Contrato de línea de comandos del ecosistema (-h/--help, --version/-v, errores de datos como
+# mensajes) y textos de Typer en español, desde yutani (N-ECO-14).
+app = crear_app(
+    "wierzbowski",
+    __version__,
+    "Auditor de grafos de inclusión de headers, dependencias circulares y Makefiles",
+    add_completion=True,
+    no_args_is_help=False,
 )
 console = Console()
-
-
-def _version_callback(value: bool) -> None:
-    if value:
-        from wierzbowski import __version__
-        typer.echo(f"wierzbowski {__version__}")
-        raise typer.Exit()
-
-
-@app.callback()
-def main_callback(
-    version: Optional[bool] = typer.Option(
-        None, "--version", "-v", callback=_version_callback, is_eager=True,
-        help="Muestra la versión de wierzbowski y sale.",
-    ),
-) -> None:
-    """Auditor de grafos de inclusión de headers, dependencias circulares y Makefiles."""
 
 
 def _auditar_directorio(directory: Path) -> DependencyAuditReport:
