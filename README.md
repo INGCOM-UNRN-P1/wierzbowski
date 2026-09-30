@@ -60,3 +60,23 @@ wierzbowski audit . --json
 - **`MKF001`**: Recetas de Makefiles indentadas con espacios en lugar de TAB.
 - **`MKF002`**: Reglas sin archivo objetivo sin declaración en `.PHONY`.
 - **`MKF003`**: Ausencia de target `clean`.
+
+<!-- p1:referencia:inicio — generado por p1-tools/scripts/readme_generado.py: no editar a mano -->
+
+## Referencia rápida
+
+### Requisitos
+
+- Python ≥ 3.11 y [uv](https://docs.astral.sh/uv/getting-started/installation/).
+
+### Comandos
+
+| Comando | Descripción |
+|:--|:--|
+| `wierzbowski check`, `wierzbowski audit` | Audita dependencias entre cabeceras, ciclos de inclusión y Makefiles. |
+| `wierzbowski report` | Genera directamente la sección de reporte Markdown de WIERZBOWSKI para Dredd. |
+| `wierzbowski doctor` | Verifica el estado del entorno de auditoría de dependencias WIERZBOWSKI (Python, Make, GCC). |
+
+Ayuda de cada comando: `wierzbowski <comando> -h`.
+
+<!-- p1:referencia:fin -->
