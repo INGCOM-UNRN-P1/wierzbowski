@@ -128,6 +128,9 @@ def lint_makefile(makefile_path: Path) -> List[MakefileIssue]:
             suggestion="Agregá '.PHONY: all clean' al inicio para evitar colisiones si existen archivos llamados 'clean' o 'all'."
         ))
 
+    from wierzbowski.core.makefile_catedra import reglas_catedra
+    issues.extend(reglas_catedra(content))
+
     if not has_clean:
         issues.append(MakefileIssue(
             code="MKF003",

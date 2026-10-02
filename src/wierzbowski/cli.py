@@ -97,9 +97,13 @@ def audit(
     directory: Path = typer.Argument(Path("."), exists=True, help="Directorio raíz del proyecto C a analizar"),
     json_output: bool = typer.Option(False, "--json", help="Emitir salida en formato JSON estructurado"),
     output_md: Optional[Path] = typer.Option(None, "--md", "--output-md", help="Generar sección de reporte en formato Markdown para fusión en Dredd."),
+    mermaid: bool = typer.Option(False, "--mermaid", help="Emitir el grafo de inclusiones en formato Mermaid."),
 ):
     """Audita dependencias entre cabeceras, ciclos de inclusión y Makefiles."""
     report = _auditar_directorio(directory)
+    if mermaid:
+        print(grafo_mermaid(report))
+        raise typer.Exit(code=0 if report.passed else 1)
     nodes, cycles = report.nodes, report.cycles
     guard_issues, guard_notes = report.guard_issues, report.guard_notes
     mk_issues = report.makefile_issues
@@ -160,6 +164,66 @@ def audit(
         console.print("\n[bold green]✓ Grafo de dependencias limpio sin ciclos ni errores de inclusión.[/bold green]")
     else:
         raise typer.Exit(code=1)
+
+
+def grafo_mermaid(report: DependencyAuditReport) -> str:
+    """Grafo de inclusiones en Mermaid; los archivos que forman un ciclo, en rojo (QoL #1077)."""
+    def ident(nombre: str) -> str:
+        return "n_" + "".join(ch if ch.isalnum() else "_" for ch in nombre)
+
+    en_ciclo = {archivo for c in report.cycles for archivo in c.cycle}
+    lineas = ["graph LR"]
+    nombres = set(report.nodes)
+    for nombre, nodo in sorted(report.nodes.items()):
+        lineas.append(f'    {ident(nombre)}["{nombre}"]')
+        for inc in nodo.includes:
+            if inc in nombres:
+                lineas.append(f"    {ident(nombre)} --> {ident(inc)}")
+    for nombre in sorted(en_ciclo & nombres):
+        lineas.append(f"    style {ident(nombre)} fill:#fdd,stroke:#c00")
+    return "\n".join(lineas)
+
+
+@app.command("makefile")
+def makefile_cmd(
+    objetivo: Path = typer.Argument(Path("."), exists=True, help="Makefile o directorio de la entrega."),
+    librerias: Optional[str] = typer.Option(None, "--librerias", help="Bibliotecas permitidas, separadas por comas (por defecto: m, pthread, rt, p1_test, check)."),
+    json_output: bool = typer.Option(False, "--json", help="Emitir salida en formato JSON estructurado."),
+):
+    """Audita un Makefile: flags de la cátedra, .PHONY, tabulaciones y trampas (antes dredd audit-makefile)."""
+    from wierzbowski.core.makefile_catedra import resolver_makefile
+
+    ruta = resolver_makefile(objetivo)
+    if not ruta.is_file():
+        console.print(f"[red]Error:[/red] no hay Makefile en {objetivo}.")
+        raise typer.Exit(code=2)
+    permitidas = {l.strip() for l in librerias.split(",") if l.strip()} if librerias else None
+    issues = lint_makefile(ruta)
+    if permitidas is not None:
+        from wierzbowski.core.makefile_catedra import reglas_catedra
+        issues = [i for i in issues if i.code != "MKF014"] + [
+            i for i in reglas_catedra(ruta.read_text(encoding="utf-8", errors="replace"), librerias_permitidas=permitidas)
+            if i.code == "MKF014"]
+    con_errores = any(i.severity == "ERROR" for i in issues)
+    if json_output:
+        print(json.dumps({"schema_version": "1.0.0", "herramienta": "wierzbowski", "comando": "makefile",
+                          "archivo": str(ruta), "ok": not con_errores,
+                          "observaciones": [i.model_dump() for i in issues]}, indent=2, ensure_ascii=False))
+        raise typer.Exit(code=1 if con_errores else 0)
+    if not issues:
+        console.print(f"[bold green]✓ {ruta.name} respeta las reglas de la cátedra.[/bold green]")
+        return
+    table = Table(title=f"Auditoría de {ruta.name}", show_header=True, header_style="bold blue")
+    table.add_column("Código", style="cyan")
+    table.add_column("Sev", style="bold")
+    table.add_column("Línea", style="dim")
+    table.add_column("Mensaje y Sugerencia", style="white")
+    for iss in issues:
+        color = "red" if iss.severity == "ERROR" else "yellow"
+        table.add_row(iss.code, f"[{color}]{iss.severity}[/{color}]", str(iss.line_number),
+                      f"{iss.message}\n[dim]↳ Sugerencia: {iss.suggestion}[/dim]")
+    console.print(table)
+    raise typer.Exit(code=1 if con_errores else 0)
 
 
 @app.command("report")
