@@ -74,6 +74,7 @@ wierzbowski audit . --json
 | Comando | Descripción |
 |:--|:--|
 | `wierzbowski check`, `wierzbowski audit` | Audita dependencias entre cabeceras, ciclos de inclusión y Makefiles. |
+| `wierzbowski makefile` | Audita un Makefile: flags de la cátedra, .PHONY, tabulaciones y trampas (antes dredd audit-makefile). |
 | `wierzbowski report` | Genera directamente la sección de reporte Markdown de WIERZBOWSKI para Dredd. |
 | `wierzbowski doctor` | Verifica el estado del entorno de auditoría de dependencias WIERZBOWSKI (Python, Make, GCC). |
 
@@ -81,7 +82,7 @@ Ayuda de cada comando: `wierzbowski <comando> -h`.
 
 ### Salida JSON
 
-Con `--json`, estos comandos emiten el resultado como JSON por la salida estándar, para usarlo desde scripts, ripley o dredd: `wierzbowski check`, `wierzbowski audit`, `wierzbowski doctor`. El de `doctor --json` lleva `schema_version` y `ok`.
+Con `--json`, estos comandos emiten el resultado como JSON por la salida estándar, para usarlo desde scripts, ripley o dredd: `wierzbowski check`, `wierzbowski audit`, `wierzbowski makefile`, `wierzbowski doctor`. El de `doctor --json` lleva `schema_version` y `ok`.
 
 ### Códigos de salida
 
