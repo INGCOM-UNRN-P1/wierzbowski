@@ -84,7 +84,7 @@ _REGLA = re.compile(r"^[^\s#=:][^=:]*:(?!=)")
 
 def lint_makefile(makefile_path: Path) -> List[MakefileIssue]:
     """Analiza un Makefile en busca de errores clásicos y buenas prácticas."""
-    issues = []
+    issues: List[MakefileIssue] = []
     if not makefile_path.exists():
         return issues
 
